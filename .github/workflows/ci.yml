@@ -3,7 +3,6 @@ name: CI
 on:
   push:
     branches: ["main"]
-  pull_request:
 
 jobs:
   test:
@@ -25,41 +24,21 @@ jobs:
           --health-retries=10
 
     env:
-      # psycopg v3 driver + local service hostname
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/testdb
       PYTHONPATH: .
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python 3.13
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
-      - name: Print versions (debug)
-        run: |
-          python -V
-          pip -V
-
-      - name: Install deps
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # sanity: show installed key packages
-          python - <<'PY'
-import pkgutil, sys
-for mod in ("sqlalchemy","psycopg","pydantic","email_validator","passlib"):
-    print(mod, "OK" if pkgutil.find_loader(mod) else "MISSING")
-PY
-
-      - name: Wait for Postgres & smoke check
-        run: |
-          for i in {1..20}; do
-            pg_isready -h localhost -U postgres -d testdb && break
-            sleep 1
-          done
-          psql "postgresql://postgres:postgres@localhost:5432/testdb" -c "SELECT 1;"
 
       - name: Run tests
         run: pytest -q
@@ -78,7 +57,7 @@ PY
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and Push
+      - name: Build and Push image
         uses: docker/build-push-action@v6
         with:
           push: true
